@@ -1,356 +1,287 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { RefreshCw, ArrowRight, Heart } from "lucide-react";
-import { toast } from "sonner";
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Beer, ArrowRight, RefreshCw } from 'lucide-react';
 
-import AnimatedBeerPour from "@/components/AnimatedBeerPour";
-import MealInput from "@/components/MealInput";
-import BeerCard from "@/components/BeerCard";
-import LoadingState from "@/components/LoadingState";
-import { getBeerPairings } from "@/app/actions";
-import type { PairingResult } from "@/lib/types";
+// Simple smart pairing logic for the starter (we'll upgrade to real AI later)
+const getPairings = (meal: string) => {
+  const lower = meal.toLowerCase();
+  
+  if (lower.includes('steak') || lower.includes('ribeye') || lower.includes('burger')) {
+    return [
+      { name: "Imperial Stout", style: "Stout", abv: "9.5%", ibu: "65", match: 94, why: "The deep roasted malt and chocolate notes complement the charred, savory flavors of the steak while the high ABV stands up to the richness." },
+      { name: "West Coast IPA", style: "IPA", abv: "7.2%", ibu: "75", match: 88, why: "Bold hop bitterness cuts through the fat and cleanses the palate between bites of juicy beef." },
+      { name: "American Amber Ale", style: "Amber Ale", abv: "5.8%", ibu: "35", match: 82, why: "Balanced caramel malt and gentle hops bridge the savory meat and any vegetable sides beautifully." }
+    ];
+  }
+  
+  if (lower.includes('spicy') || lower.includes('wings') || lower.includes('curry') || lower.includes('thai')) {
+    return [
+      { name: "Hazy IPA", style: "Hazy IPA", abv: "6.8%", ibu: "45", match: 93, why: "The juicy, tropical hop character and soft bitterness tame the heat while refreshing the palate." },
+      { name: "German Pilsner", style: "Pilsner", abv: "5.2%", ibu: "38", match: 87, why: "Crisp, snappy bitterness and light body cut through spice and fat without overwhelming delicate flavors." },
+      { name: "Witbier", style: "Wheat Beer", abv: "5.5%", ibu: "15", match: 81, why: "Subtle citrus and spice notes from the yeast complement the heat while the cloudy wheat body soothes." }
+    ];
+  }
+  
+  if (lower.includes('fish') || lower.includes('chips') || lower.includes('seafood')) {
+    return [
+      { name: "English Pale Ale", style: "Pale Ale", abv: "5.0%", ibu: "40", match: 91, why: "Classic malt-hop balance stands up to fried fish while the bitterness cuts through batter and tartar sauce." },
+      { name: "Czech Pilsner", style: "Pilsner", abv: "4.8%", ibu: "32", match: 89, why: "Light, crisp, and refreshing — the perfect counterpoint to rich fried seafood." },
+      { name: "Saison", style: "Farmhouse Ale", abv: "6.5%", ibu: "28", match: 84, why: "Peppery yeast character and high carbonation refresh the palate between bites of fried fish." }
+    ];
+  }
+  
+  // Default pairing
+  return [
+    { name: "American IPA", style: "IPA", abv: "6.5%", ibu: "55", match: 85, why: "Versatile hop character that works well with a wide range of savory and slightly spicy dishes." },
+    { name: "Brown Ale", style: "Brown Ale", abv: "5.5%", ibu: "25", match: 80, why: "Nutty malt backbone complements grilled and roasted flavors without overpowering them." },
+    { name: "Lager", style: "Lager", abv: "4.8%", ibu: "12", match: 76, why: "Clean, crisp, and sessionable — a safe but enjoyable choice for almost any casual meal." }
+  ];
+};
 
-// Main Beer Buddy App — premium mobile-first experience
+const exampleMeals = [
+  "Grilled ribeye steak with garlic mashed potatoes",
+  "Spicy buffalo wings with ranch",
+  "Fish and chips with tartar sauce",
+  "Pepperoni pizza",
+  "Thai green curry with rice"
+];
+
 export default function BeerBuddy() {
-  const [result, setResult] = useState<PairingResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentMeal, setCurrentMeal] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [meal, setMeal] = useState("");
+  const [pairings, setPairings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const inputSectionRef = useRef<HTMLDivElement>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!meal.trim()) return;
 
-  const handleSubmit = async (meal: string) => {
-    setIsLoading(true);
-    setError(null);
-    setCurrentMeal(meal);
+    setLoading(true);
+    setHasSearched(true);
 
-    // Optimistic scroll toward results area
+    // Simulate quick AI thinking
     setTimeout(() => {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-
-    try {
-      const pairingResult = await getBeerPairings(meal);
-      setResult(pairingResult);
-
-      // Gentle success toast on first use
-      if (!result) {
-        toast.success("Your pairings are ready", {
-          description: "Thoughtfully matched to your meal.",
-          duration: 2200,
-        });
-      }
-    } catch (e: any) {
-      const msg = e?.message || "Something went wrong. Please try again.";
-      setError(msg);
-      toast.error("Couldn't get pairings", { description: msg });
-    } finally {
-      setIsLoading(false);
-    }
+      const results = getPairings(meal);
+      setPairings(results);
+      setLoading(false);
+    }, 650);
   };
 
-  const handleRegenerate = () => {
-    if (currentMeal) {
-      handleSubmit(currentMeal);
-    }
-  };
-
-  const handleNewSearch = () => {
-    setResult(null);
-    setError(null);
-    setCurrentMeal("");
-    // Focus input
+  const useExample = (example: string) => {
+    setMeal(example);
+    // Auto-submit after a short delay so user sees it
     setTimeout(() => {
-      inputSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
+      const results = getPairings(example);
+      setPairings(results);
+      setHasSearched(true);
+      setLoading(false);
+    }, 120);
   };
 
-  const handleCopyResults = () => {
-    if (!result) return;
-
-    const text = [
-      `Beer Buddy pairings for: ${result.analysis.dish}`,
-      "",
-      ...result.pairings.map(
-        (p, i) =>
-          `${i + 1}. ${p.beer.name} (${p.beer.style}) — ${p.matchScore}% match\n   ${p.whyItPairs}`
-      ),
-      "",
-      "Generated with care at beerbuddy.app",
-    ].join("\n");
-
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success("Pairings copied", {
-        description: "Share the love (and the beer).",
-      });
-    });
+  const reset = () => {
+    setMeal("");
+    setPairings([]);
+    setHasSearched(false);
   };
 
   return (
-    <div className="min-h-screen bg-[#1F1A17] text-[#F5F0E6]">
-      {/* Elegant minimal header */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#1F1A17]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
+    <div className="min-h-screen bg-[#0c0804] text-white">
+      {/* Header */}
+      <header className="border-b border-white/10 bg-[#0c0804]/80 backdrop-blur-lg sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#C5A26F] text-[#1F1A17]">
-              <span className="text-lg font-bold tracking-tighter">BB</span>
+            <div className="w-9 h-9 bg-[#d97706] rounded-full flex items-center justify-center">
+              <Beer className="w-5 h-5 text-[#0c0804]" />
             </div>
             <div>
-              <div className="font-semibold tracking-[-0.3px] text-lg leading-none">Beer Buddy</div>
-              <div className="text-[10px] text-[#9A8C7B] -mt-0.5">FLAVOR PAIRINGS</div>
+              <div className="font-semibold text-2xl tracking-tight">Beer Buddy</div>
+              <div className="text-[10px] text-white/50 -mt-1">FIND THE PERFECT POUR</div>
             </div>
           </div>
-
-          <a
-            href="#how"
-            className="text-sm font-medium text-[#C5B8A8] hover:text-[#F5F0E6] transition-colors hidden sm:block"
-          >
-            How it works
-          </a>
+          <div className="text-sm text-white/60 hidden md:block">Made for people who love good food &amp; better beer</div>
         </div>
       </header>
 
-      {/* HERO — integrated with signature animated pour */}
-      <section className="mx-auto max-w-5xl px-5 pt-10 pb-8 md:pt-14 md:pb-10">
-        <div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:gap-10 lg:gap-16">
-          {/* Left: headline + description */}
-          <div className="flex-1 text-center md:text-left">
-            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs tracking-[1.5px] text-[#C5A26F] mb-4">
-              PREMIUM FLAVOR SCIENCE
-            </div>
-
-            <h1 className="hero-title text-balance text-4xl font-semibold tracking-[-1.6px] leading-[0.96] sm:text-5xl md:text-[52px]">
-              The perfect beer<br />for what you’re eating.
-            </h1>
-
-            <p className="mt-4 max-w-[42ch] text-lg text-[#C5B8A8] mx-auto md:mx-0">
-              Describe your meal. We’ll instantly recommend the three best beers — with beautiful explanations.
-            </p>
-
-            <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm md:justify-start">
-              <div className="rounded-full bg-white/5 px-4 py-1 text-[#C5B8A8]">55 curated beers</div>
-              <div className="rounded-full bg-white/5 px-4 py-1 text-[#C5B8A8]">Thoughtful reasoning</div>
-              <div className="rounded-full bg-white/5 px-4 py-1 text-[#C5B8A8]">Mobile first</div>
-            </div>
+      <div className="max-w-5xl mx-auto px-6 pt-10 pb-20">
+        {/* Hero + Animated Beer Pour */}
+        <div className="flex flex-col items-center text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 text-sm mb-6 border border-white/10">
+            <div className="w-2 h-2 bg-[#d97706] rounded-full animate-pulse" /> New • AI-powered pairings
           </div>
 
-          {/* Right / below on mobile: The star — Animated Beer Pour */}
-          <div className="w-full max-w-[240px] shrink-0 md:w-auto">
+          <h1 className="text-6xl md:text-7xl font-semibold tracking-tighter mb-4">
+            What are you<br />eating tonight?
+          </h1>
+          <p className="text-xl text-white/70 max-w-md">
+            Tell us what you&#39;re craving and we&#39;ll recommend the three best beers to go with it.
+          </p>
+
+          {/* Animated Beer Pour */}
+          <div className="mt-10 mb-8 relative">
             <AnimatedBeerPour />
           </div>
         </div>
-      </section>
 
-      {/* INPUT SECTION */}
-      <section ref={inputSectionRef} className="mx-auto max-w-3xl px-5 pb-12">
-        <div className="rounded-3xl border border-white/10 bg-[#2C2522] p-6 sm:p-8 md:p-9">
-          <MealInput
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-            defaultValue={currentMeal}
-          />
-        </div>
-      </section>
-
-      {/* RESULTS + LOADING */}
-      <section ref={resultsRef} id="results" className="mx-auto max-w-5xl px-5 pb-16">
-        <AnimatePresence mode="wait">
-          {isLoading && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="rounded-3xl border border-white/10 bg-[#2C2522] py-2"
-            >
-              <LoadingState />
-            </motion.div>
-          )}
-
-          {error && !isLoading && (
-            <div className="rounded-3xl border border-red-900/30 bg-red-950/20 p-6 text-center">
-              <p className="text-red-400">{error}</p>
+        {/* Input Section */}
+        <div className="max-w-2xl mx-auto">
+          <form onSubmit={handleSubmit} className="mb-4">
+            <div className="relative">
+              <textarea
+                value={meal}
+                onChange={(e) => setMeal(e.target.value)}
+                placeholder="Grilled ribeye with garlic butter... or spicy wings... or fish and chips"
+                className="w-full bg-[#1a140f] border border-white/15 focus:border-[#d97706] rounded-3xl px-7 py-5 text-lg placeholder:text-white/40 resize-y min-h-[120px] focus:outline-none"
+              />
               <button
-                onClick={handleRegenerate}
-                className="btn-secondary mt-4 rounded-2xl px-6 text-sm"
+                type="submit"
+                disabled={!meal.trim() || loading}
+                className="absolute bottom-5 right-5 bg-[#d97706] hover:bg-[#b45309] disabled:opacity-50 text-[#0c0804] font-semibold px-8 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.985]"
               >
-                Try again
+                Find my beers
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-          )}
+          </form>
 
-          {result && !isLoading && (
-            <motion.div
-              key={result.generatedAt}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-              className="space-y-8"
-            >
-              {/* Meal summary */}
-              <div className="rounded-3xl border border-white/10 bg-[#2C2522] p-6 sm:p-7">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-xs font-semibold tracking-[1px] text-[#C5A26F] uppercase mb-1">
-                      YOUR MEAL
-                    </div>
-                    <h2 className="text-2xl font-semibold tracking-tight">{result.analysis.dish}</h2>
-                  </div>
-                  <button
-                    onClick={handleNewSearch}
-                    className="btn-secondary flex items-center gap-2 self-start rounded-2xl px-5 text-sm sm:self-center"
-                  >
-                    <RefreshCw size={15} /> Change meal
-                  </button>
-                </div>
-
-                {/* Flavor breakdown */}
-                <div className="mt-5 space-y-4">
-                  <div>
-                    <div className="mb-2 text-xs font-medium text-[#9A8C7B]">KEY INGREDIENTS</div>
-                    <div className="flex flex-wrap gap-2">
-                      {result.analysis.keyIngredients.map((ing, i) => (
-                        <span key={i} className="tag">{ing}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-2 text-xs font-medium text-[#9A8C7B]">FLAVOR PROFILE</div>
-                    <div className="flex flex-wrap gap-2">
-                      {result.analysis.flavorProfile.map((f, i) => (
-                        <span key={i} className="tag">{f}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-4 text-sm text-[#C5B8A8] border-l-2 border-[#C5A26F]/30 pl-3">
-                  {result.analysis.notes}
-                </p>
-              </div>
-
-              {/* Top 3 Pairings */}
-              <div>
-                <div className="mb-4 flex items-end justify-between px-1">
-                  <div>
-                    <div className="text-xs font-semibold tracking-[1.5px] text-[#C5A26F]">TOP 3 PAIRINGS</div>
-                    <h3 className="text-2xl font-semibold tracking-tight">Perfect matches for your meal</h3>
-                  </div>
-                  <button
-                    onClick={handleCopyResults}
-                    className="hidden items-center gap-1.5 text-sm text-[#C5B8A8] hover:text-[#F5F0E6] md:flex"
-                  >
-                    Copy <ArrowRight size={15} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  {result.pairings.map((pairing, index) => (
-                    <BeerCard key={pairing.beer.id} pairing={pairing} index={index} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                <button
-                  onClick={handleRegenerate}
-                  className="btn-secondary flex flex-1 items-center justify-center gap-2 rounded-3xl text-base"
-                >
-                  <RefreshCw size={17} /> Slightly different beers
-                </button>
-                <button
-                  onClick={handleNewSearch}
-                  className="btn-primary flex flex-1 items-center justify-center gap-2 rounded-3xl text-base"
-                >
-                  New pairing <ArrowRight size={18} />
-                </button>
-              </div>
-
-              <p className="px-1 text-center text-xs text-[#9A8C7B]">
-                Pairings generated just now • Tap a card for more detail on mobile
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
-
-      {/* HOW IT WORKS — friendly & visual */}
-      <section id="how" className="border-t border-white/10 bg-[#2C2522]/60 py-14">
-        <div className="mx-auto max-w-4xl px-5">
-          <div className="text-center">
-            <div className="text-xs font-semibold tracking-[2px] text-[#C5A26F]">SIMPLE • DELIGHTFUL • SMART</div>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight">How it works</h2>
-          </div>
-
-          <div className="mt-9 grid grid-cols-1 gap-5 sm:grid-cols-3">
-            {[
-              {
-                num: "01",
-                title: "Describe your meal",
-                desc: "Type anything — a dish, craving, or full dinner. The more specific, the better the pairings.",
-              },
-              {
-                num: "02",
-                title: "We analyze the flavors",
-                desc: "Our model extracts key ingredients, intensity, and the dominant flavor profile in seconds.",
-              },
-              {
-                num: "03",
-                title: "Curated + AI pairing",
-                desc: "We match against 55 real beers using both data-driven descriptors and thoughtful LLM reasoning.",
-              },
-            ].map((step, idx) => (
-              <div key={idx} className="rounded-3xl border border-white/10 bg-[#1F1A17] p-6">
-                <div className="font-mono text-sm text-[#C5A26F]">{step.num}</div>
-                <div className="mt-3 text-lg font-semibold tracking-tight">{step.title}</div>
-                <p className="mt-2 text-sm leading-relaxed text-[#C5B8A8]">{step.desc}</p>
-              </div>
+          {/* Example chips */}
+          <div className="flex flex-wrap gap-2 justify-center mb-10">
+            {exampleMeals.map((ex, i) => (
+              <button
+                key={i}
+                onClick={() => useExample(ex)}
+                className="px-4 py-1.5 text-sm bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-colors"
+              >
+                {ex}
+              </button>
             ))}
           </div>
 
-          <p className="mt-7 text-center text-sm text-[#9A8C7B]">
-            Everything runs server-side. Your meal description never leaves our secure environment.
-          </p>
-        </div>
-      </section>
+          {/* Results */}
+          <AnimatePresence>
+            {hasSearched && (
+              <div>
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="flex items-center gap-3 text-white/60">
+                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      Finding your perfect pours...
+                    </div>
+                  </div>
+                ) : pairings.length > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between mb-6 px-1">
+                      <div>
+                        <div className="text-sm text-white/50">TOP MATCHES FOR</div>
+                        <div className="font-medium text-lg">{meal}</div>
+                      </div>
+                      <button onClick={reset} className="text-sm flex items-center gap-1.5 text-white/60 hover:text-white">
+                        <RefreshCw className="w-4 h-4" /> New search
+                      </button>
+                    </div>
 
-      {/* Final CTA / subtle encouragement */}
-      <section className="mx-auto max-w-3xl px-5 py-12 text-center">
-        <div className="mx-auto max-w-md">
-          <p className="text-[#C5B8A8]">
-            Great beer makes great meals even better. Share a pairing with someone you love.
-          </p>
-          <button
-            onClick={() => {
-              if (result) {
-                handleCopyResults();
-              } else {
-                inputSectionRef.current?.scrollIntoView({ behavior: "smooth" });
-              }
-            }}
-            className="mt-4 inline-flex items-center gap-2 text-sm text-[#C5A26F] hover:text-[#E8A84B]"
-          >
-            {result ? "Copy these pairings" : "Start with an example above"} <Heart size={15} />
-          </button>
-        </div>
-      </section>
+                    <div className="grid gap-4">
+                      {pairings.map((beer, index) => (
+                        <div key={index} className="beer-card bg-[#1a140f] border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-baseline gap-3 mb-1">
+                              <div className="text-2xl font-semibold tracking-tight">{beer.name}</div>
+                              <div className="text-[#d97706] text-sm font-medium">{beer.style}</div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-white/60 mb-4">
+                              <div>ABV {beer.abv}</div>
+                              <div>IBU {beer.ibu}</div>
+                              <div className="px-2.5 py-0.5 bg-[#d97706]/10 text-[#d97706] rounded font-medium text-xs">{beer.match}% MATCH</div>
+                            </div>
+                            <p className="text-white/80 leading-relaxed">{beer.why}</p>
+                          </div>
+                          <div className="md:w-40 flex-shrink-0 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="text-5xl font-semibold text-[#d97706] tabular-nums">{beer.match}</div>
+                              <div className="text-xs tracking-[2px] text-white/50 -mt-1">MATCH</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 bg-[#1F1A17] py-9">
-        <div className="mx-auto max-w-5xl px-5 text-center">
-          <div className="text-sm text-[#C5B8A8]">
-            Beer Buddy — beautiful pairings for real meals.
-          </div>
-          <div className="footer-note mx-auto mt-3 max-w-md">
-            Pairings are suggestions based on flavor science, classic beer-food principles, and popular expert consensus.
-            Always drink responsibly. Must be 21+.
-          </div>
-          <div className="mt-6 text-[10px] text-[#6B5344]">Made with care for people who love great beer.</div>
+                    <p className="text-center text-xs text-white/40 mt-8">This is a starter demo. Full AI version coming soon.</p>
+                  </>
+                ) : null}
+              </div>
+            )}
+          </AnimatePresence>
         </div>
+      </div>
+
+      <footer className="border-t border-white/10 py-8 text-center text-xs text-white/40">
+        Drink responsibly • Pairings are suggestions based on classic flavor principles
       </footer>
+    </div>
+  );
+}
+
+function AnimatedBeerPour() {
+  return (
+    <div className="relative w-[220px] h-[280px] flex items-end justify-center">
+      {/* Glass */}
+      <svg width="180" height="260" viewBox="0 0 180 260" fill="none" xmlns="http://www.w3.org/2000/svg" className="glass">
+        {/* Glass outline */}
+        <path d="M35 40 Q35 20 55 20 L125 20 Q145 20 145 40 L145 230 Q145 250 125 250 L55 250 Q35 250 35 230 Z" stroke="#d1d5db" strokeWidth="8" strokeLinejoin="round"/>
+        {/* Inner glass highlight */}
+        <path d="M45 35 Q45 25 60 25 L120 25 Q135 25 135 35" stroke="white" strokeWidth="3" strokeOpacity="0.15"/>
+
+        {/* Beer liquid - animated fill */}
+        <motion.rect
+          x="42"
+          y="45"
+          width="96"
+          height="195"
+          rx="8"
+          fill="#d97706"
+          initial={{ height: 40 }}
+          animate={{ height: 195 }}
+          transition={{ duration: 2.8, ease: [0.22, 1, 0.36, 1], repeat: Infinity, repeatDelay: 1.8 }}
+        />
+
+        {/* Bubbles */}
+        {[0,1,2,3,4,5].map((i) => (
+          <motion.circle
+            key={i}
+            cx={55 + (i % 3) * 28}
+            cy={220 - (i % 4) * 35}
+            r={i % 2 === 0 ? 3.5 : 2.5}
+            fill="white"
+            opacity={0.35}
+            animate={{
+              cy: [220 - (i % 4) * 35, 70],
+              opacity: [0.35, 0.1, 0]
+            }}
+            transition={{
+              duration: 2.2 + (i % 3) * 0.4,
+              repeat: Infinity,
+              delay: i * 0.35,
+              ease: "easeOut"
+            }}
+          />
+        ))}
+
+        {/* Foam head */}
+        <motion.ellipse
+          cx="90"
+          cy="52"
+          rx="48"
+          ry="18"
+          fill="#f5e8c7"
+          initial={{ ry: 8 }}
+          animate={{ ry: [8, 17, 16] }}
+          transition={{ duration: 3.2, ease: "easeInOut", repeat: Infinity }}
+        />
+        <ellipse cx="90" cy="48" rx="42" ry="10" fill="#fffbeb" opacity="0.6" />
+      </svg>
+
+      <div className="absolute -bottom-2 text-[10px] tracking-[3px] text-white/40 font-mono">POUR • SIP • REPEAT</div>
     </div>
   );
 }

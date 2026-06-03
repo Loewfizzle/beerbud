@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "sonner";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { Beer } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Beer Buddy | AI Beer Pairings for Your Meal",
-  description: "Type what you're eating and get the top 3 perfect beer pairings with thoughtful explanations. Premium flavor science meets elegant design.",
+  title: "Beer Buddy | Find the perfect beer for what you're eating",
+  description: "AI-powered beer and food pairing. Tell us what you're eating and we'll recommend the best beers.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -23,17 +12,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#1F1A17] text-[#F5F0E6]">
+    <html lang="en">
+      <body className="bg-[#0c0804] text-white antialiased">
         {children}
-        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );
