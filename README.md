@@ -1,14 +1,14 @@
-# Beer Buddy
+# Beer Buddy 🍺
 
-AI-powered beer and food pairing website.
+**Starter is now live at beerbud.loewfizzle.com**
 
-## Getting Started
+Animated beer pour + smart demo pairings working.
+
+Next up: Full AI version with real LLM recommendations.
+
+## Run locally
 
 ```bash
 npm install
 npm run dev
 ```
-
-This is the initial starter deployment with a beautiful animated beer pour and smart demo pairings.
-
-Full LLM-powered version coming next.
